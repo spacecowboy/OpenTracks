@@ -46,12 +46,6 @@ public class TrackStatisticsUpdater {
     @VisibleForTesting
     private static final int ALTITUDE_SMOOTHING_FACTOR = 25;
 
-    /**
-     * The number of speed reading to smooth to get a somewhat accurate signal.
-     */
-    @VisibleForTesting
-    private static final int SPEED_SMOOTHING_FACTOR = 25;
-
     private static final String TAG = TrackStatisticsUpdater.class.getSimpleName();
     /**
      * Ignore any acceleration faster than this.
@@ -63,12 +57,13 @@ public class TrackStatisticsUpdater {
     private final TrackStatistics trackStatistics;
 
     private final AltitudeRingBuffer altitudeBuffer;
-    private final SpeedRingBuffer speedBuffer;
 
     // The current segment's statistics
     private final TrackStatistics currentSegment;
     // Current segment's last trackPoint
     private TrackPoint lastTrackPoint;
+
+    private Speed lastValidSpeed;
 
     public TrackStatisticsUpdater() {
         this(new TrackStatistics());
@@ -84,7 +79,6 @@ public class TrackStatisticsUpdater {
         this.currentSegment = new TrackStatistics();
 
         altitudeBuffer = new AltitudeRingBuffer(ALTITUDE_SMOOTHING_FACTOR);
-        speedBuffer = new SpeedRingBuffer(SPEED_SMOOTHING_FACTOR);
     }
 
     public TrackStatisticsUpdater(TrackStatisticsUpdater toCopy) {
@@ -92,9 +86,10 @@ public class TrackStatisticsUpdater {
         this.trackStatistics = new TrackStatistics(toCopy.trackStatistics);
 
         this.altitudeBuffer = new AltitudeRingBuffer(toCopy.altitudeBuffer);
-        this.speedBuffer = new SpeedRingBuffer(toCopy.speedBuffer);
 
         this.lastTrackPoint = toCopy.lastTrackPoint;
+
+        this.lastValidSpeed = toCopy.lastValidSpeed;
     }
 
     public TrackStatistics getTrackStatistics() {
@@ -108,9 +103,6 @@ public class TrackStatisticsUpdater {
         trackPoints.stream().forEachOrdered(this::addTrackPoint);
     }
 
-    /**
-     *
-     */
     public void addTrackPoint(TrackPoint trackPoint) {
         if (trackPoint.isSegmentStart()) {
             reset(trackPoint);
@@ -162,8 +154,6 @@ public class TrackStatisticsUpdater {
 
             // Update max speed
             updateSpeed(trackPoint, lastTrackPoint);
-        } else {
-            speedBuffer.reset();
         }
 
 
@@ -183,7 +173,7 @@ public class TrackStatisticsUpdater {
 
         lastTrackPoint = null;
         altitudeBuffer.reset();
-        speedBuffer.reset();
+        lastValidSpeed = null;
     }
 
     /**
@@ -194,53 +184,54 @@ public class TrackStatisticsUpdater {
         return altitudeBuffer.getAverage();
     }
 
-    public Speed getSmoothedSpeed() {
-        return speedBuffer.getAverage();
-    }
-
     /**
      * Updates a speed reading while assuming the user is moving.
      */
     @VisibleForTesting
     private void updateSpeed(@NonNull TrackPoint trackPoint, @NonNull TrackPoint lastTrackPoint) {
-        if (!trackPoint.isMoving()) {
-            speedBuffer.reset();
-        } else if (isValidSpeed(trackPoint, lastTrackPoint)) {
-            speedBuffer.setNext(trackPoint.getSpeed());
-            Speed average = speedBuffer.getAverage();
-            if (average.greaterThan(currentSegment.getMaxSpeed())) {
-                currentSegment.setMaxSpeed(average);
+        /*Log.e("probando", "TrackStatisticsUpdater.updateSpeed---------------------------");
+        Log.e("probando", "\t\tVelocidad del trackPoint: " + trackPoint.getSpeed());*/
+        if (isValidSpeed(trackPoint, lastTrackPoint)) {
+            lastValidSpeed = trackPoint.getSpeed();
+            Log.e("probando", "\t\tla velocidad es válida");
+            Log.e("probando", "\t\tla velocidad máxima hata ahora del segmento: " + Math.round(currentSegment.getMaxSpeed().toKMH() * Math.pow(10, 2)) / Math.pow(10, 2));
+            if (trackPoint.getSpeed().greaterThan(currentSegment.getMaxSpeed())) {
+                Log.e("probando", "\t\tactualizamos la velocidad máxima del segmento por " + Math.round(trackPoint.getSpeed().toKMH() * Math.pow(10, 2)) / Math.pow(10, 2));
+                currentSegment.setMaxSpeed(trackPoint.getSpeed());
+                Log.e("probando", "\t\tactualizada como se ve: " + Math.round(currentSegment.getMaxSpeed().toKMH() * Math.pow(10, 2)) / Math.pow(10, 2));
             }
         } else {
+            //Log.e("probando", "\tvelocidad inválida: " + trackPoint.getSpeed() + " lastLocationSpeed: " + lastTrackPoint.getSpeed());
             Log.d(TAG, "Invalid speed. speed: " + trackPoint.getSpeed() + " lastLocationSpeed: " + lastTrackPoint.getSpeed());
         }
     }
 
     private boolean isValidSpeed(@NonNull TrackPoint trackPoint, @NonNull TrackPoint lastTrackPoint) {
+        Log.e("probando", "isValidSpeed-------------------------------------------------");
         // There are a lot of noisy speed readings. Do the cheapest checks first, most expensive last.
         if (trackPoint.getSpeed().isZero()) {
             return false;
         }
 
+        // See if the speed seems physically likely. Ignore any speeds that imply acceleration greater than 2g.
         Duration timeDifference = Duration.between(lastTrackPoint.getTime(), trackPoint.getTime());
-        Speed maxAcceleration = Speed.of(MAX_ACCELERATION * timeDifference.toMillis());
-        {
-            // See if the speed seems physically likely. Ignore any speeds that imply acceleration greater than 2g.
-            Speed speedDifference = Speed.absDiff(lastTrackPoint.getSpeed(), trackPoint.getSpeed());
-            if (speedDifference.greaterThan(maxAcceleration)) {
-                return false;
-            }
-        }
+        Speed maxAcceleration = Speed.of(MAX_ACCELERATION * timeDifference.getSeconds());
+        Speed speedDifference = Speed.absDiff(lastTrackPoint.getSpeed(), trackPoint.getSpeed());
+        Speed acceleration = Speed.of(speedDifference.toMPS() / timeDifference.getSeconds());
 
-        // Only check if the speed buffer is full. Check that the speed is less than 10X the smoothed average and the speed difference doesn't imply 2g acceleration.
-        if (speedBuffer.isFull()) {
-            Speed average = speedBuffer.getAverage();
-            Speed speedDifference = Speed.absDiff(average, trackPoint.getSpeed());
+        Log.e("probando", "\t\ttimeDifference (s): " + timeDifference);
+        Log.e("probando", "\t\tmaxAcceleration (km/h): " + (Math.round(maxAcceleration.toKMH() * Math.pow(10, 2)) / Math.pow(10, 2)));
+        Log.e("probando", "\t\tacceleration (km/h): " + (Math.round(acceleration.toKMH() * Math.pow(10, 2)) / Math.pow(10, 2)));
+        Log.e("probando", "\t\tspeedDiference (km/h): " + (Math.round(speedDifference.toKMH() * Math.pow(10, 2)) / Math.pow(10, 2)));
+        Log.e("probando", "\t\t\tlast speed: " + (Math.round(lastTrackPoint.getSpeed().toKMH() * Math.pow(10, 2)) / Math.pow(10, 2)));
+        Log.e("probando", "\t\t\tcurrent speed: " + (Math.round(trackPoint.getSpeed().toKMH() * Math.pow(10, 2)) / Math.pow(10, 2)));
+        Log.e("probando", "\t\tisValid? " + (!speedDifference.greaterThan(maxAcceleration)));
 
-            return trackPoint.getSpeed().lessThan(average.mul(10)) && speedDifference.lessThan(maxAcceleration);
-        }
+        return !acceleration.greaterThan(maxAcceleration);
+    }
 
-        return true;
+    public Speed getSmoothedSpeed() {
+        return lastValidSpeed;
     }
 
     @NonNull
