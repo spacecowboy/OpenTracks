@@ -74,8 +74,9 @@ limitations under the License.
                         <!-- Table 2: Row 1: Column 1: (name) -->
                         <TextView
                             android:id="@+id/list_item_name"
-                            style="@style/TextMediumPrimary"
                             android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            style="?attr/textAppearanceSubtitle1"
                             android:layout_gravity="bottom"
                             android:ellipsize="end"
                             android:singleLine="true"
@@ -83,7 +84,9 @@ limitations under the License.
                         <!-- Table 2: Row 1: Column 2: (date) -->
                         <TextView
                             android:id="@+id/list_item_date"
-                            style="@style/ListItemDate"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            style="?attr/textAppearanceSubtitle1"
                             tools:text="2020-09-09" />
                     </TableRow>
 
@@ -97,7 +100,9 @@ limitations under the License.
 
                             <TextView
                                 android:id="@+id/list_item_time_distance"
-                                style="@style/TextSmall"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                style="?attr/textAppearanceCaption"
                                 android:layout_gravity="bottom"
                                 android:ellipsize="end"
                                 android:singleLine="true"
@@ -117,7 +122,9 @@ limitations under the License.
 
                             <TextView
                                 android:id="@+id/list_item_marker_count"
-                                style="@style/TextSmall"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                style="?attr/textAppearanceCaption"
                                 android:layout_gravity="bottom"
                                 android:ellipsize="end"
                                 android:singleLine="true"
@@ -126,7 +133,9 @@ limitations under the License.
                         <!-- Table 2: Row 2: Column 2: (time) -->
                         <TextView
                             android:id="@+id/list_item_time"
-                            style="@style/ListItemDate" />
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            style="?attr/textAppearanceCaption" />
                     </TableRow>
                 </TableLayout>
             </TableRow>
@@ -135,7 +144,9 @@ limitations under the License.
                 <!-- Table 1: Row 2: (category and description) -->
                 <TextView
                     android:id="@+id/list_item_category_description"
-                    style="@style/TextSmall"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    style="?attr/textAppearanceCaption"
                     android:layout_column="1"
                     android:ellipsize="end"
                     android:maxLines="2"

@@ -16,7 +16,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             tools:text="Profile/Custom Layout Title"
-            style="@style/LargeLabel"
+            style="@style/TextAppearance.OpenTracks.PrimaryHeader"
             android:layout_margin="8dp"
             app:layout_constraintHorizontal_chainStyle="packed"
             app:layout_constraintStart_toStartOf="parent"

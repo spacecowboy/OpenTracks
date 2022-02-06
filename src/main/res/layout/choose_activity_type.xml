@@ -31,4 +31,5 @@ limitations under the License.
         android:paddingEnd="12dp"
         android:stretchMode="spacingWidth"
         android:verticalSpacing="4dp" />
+
 </LinearLayout>

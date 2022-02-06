@@ -15,14 +15,24 @@ limitations under the License.
 -->
 <resources xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <style name="ThemeCustom" parent="Theme.AppCompat.DayNight.NoActionBar">
-        <!--        <item name="colorPrimary">TODO</item>-->
-        <!--        <item name="colorPrimaryDark">TODO</item>-->
+    <style name="ThemeCustom" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/ot_primary_color</item>
+        <item name="colorPrimaryVariant">@color/ot_primary_variant_color</item>
+        <item name="colorOnPrimary">@color/ot_on_primary_color</item>
 
-        <item name="colorAccent">@color/colorAccent</item>
+        <item name="colorSecondary">@color/ot_secondary_color</item>
+        <item name="colorSecondaryVariant">@color/ot_secondary_color</item>
+        <item name="colorOnSecondary">@color/ot_on_secondary_color</item>
+
+        <item name="colorError">@color/red_dark</item>
+        <item name="colorOnError">@android:color/white</item>
+
+        <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
+
+        <item name="android:colorBackground">@android:color/white</item>
+        <item name="colorOnBackground">@android:color/black</item>
+
         <item name="android:activatedBackgroundIndicator">@drawable/activated_background</item>
-
-        <item name="windowActionModeOverlay">true</item>
     </style>
 
     <style name="SplashTheme" parent="ThemeCustom">
