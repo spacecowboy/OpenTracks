@@ -1,7 +1,12 @@
 package de.dennisguse.opentracks.services.announcement;
 
 import static android.text.Spanned.SPAN_INCLUSIVE_EXCLUSIVE;
-import static de.dennisguse.opentracks.settings.PreferencesUtils.shouldVoiceAnnounceHeartRate;
+import static de.dennisguse.opentracks.settings.PreferencesUtils.shouldVoiceAnnounceAverageHeartRate;
+import static de.dennisguse.opentracks.settings.PreferencesUtils.shouldVoiceAnnounceAverageSpeedPace;
+import static de.dennisguse.opentracks.settings.PreferencesUtils.shouldVoiceAnnounceLapHeartRate;
+import static de.dennisguse.opentracks.settings.PreferencesUtils.shouldVoiceAnnounceLapSpeedPace;
+import static de.dennisguse.opentracks.settings.PreferencesUtils.shouldVoiceAnnounceTotalDistance;
+import static de.dennisguse.opentracks.settings.PreferencesUtils.shouldVoiceAnnounceTotalTime;
 
 import android.content.Context;
 import android.os.Build;
@@ -44,24 +49,26 @@ class VoiceAnnouncementUtils {
         double distanceInUnit = distance.toKM_Miles(isMetricUnits);
         int distanceId = isMetricUnits ? R.plurals.voiceDistanceKilometers : R.plurals.voiceDistanceMiles;
 
-        builder.append(context.getString(R.string.total_distance));
-        appendDecimalUnit(
-                builder,
-                // This string is not actually spoken
-                context.getResources().getQuantityString(distanceId, getQuantityCount(distanceInUnit), distanceInUnit),
-                String.format(locale, "%.2f", distanceInUnit),
-                // Units should always be english singular
-                isMetricUnits ? "kilometer" : "mile"
-        );
-        // Punctuation helps introduce natural pauses in TTS
-        builder.append(",");
+        if (shouldVoiceAnnounceTotalDistance()) {
+            builder.append(context.getString(R.string.total_distance));
+            appendDecimalUnit(
+                    builder,
+                    // This string is not actually spoken
+                    context.getResources().getQuantityString(distanceId, getQuantityCount(distanceInUnit), distanceInUnit),
+                    String.format(locale, "%.2f", distanceInUnit),
+                    // Units should always be english singular
+                    isMetricUnits ? "kilometer" : "mile"
+            );
+            // Punctuation helps introduce natural pauses in TTS
+            builder.append(",");
+        }
         if (distance.isZero()) {
             return builder;
         }
 
         // Announce time
         Duration movingTime = trackStatistics.getMovingTime();
-        if (!movingTime.isZero()) {
+        if (shouldVoiceAnnounceTotalTime() && !movingTime.isZero()) {
             appendDuration(
                     context,
                     locale,
@@ -73,18 +80,20 @@ class VoiceAnnouncementUtils {
 
         if (isReportSpeed) {
             int speedId = isMetricUnits ? R.plurals.voiceSpeedKilometersPerHour : R.plurals.voiceSpeedMilesPerHour;
-            double speedInUnit = distancePerTime.to(isMetricUnits);
+            if (shouldVoiceAnnounceAverageSpeedPace()) {
+                double speedInUnit = distancePerTime.to(isMetricUnits);
 
-            builder.append(" ").append(context.getString(R.string.speed));
-            appendDecimalUnit(
-                    builder,
-                    context.getResources().getQuantityString(speedId, getQuantityCount(speedInUnit), speedInUnit),
-                    String.format(locale, "%.1f", speedInUnit),
-                    isMetricUnits ? "kilometer per hour" : "mile per hour"
-            );
-            builder.append(",");
+                builder.append(" ").append(context.getString(R.string.speed));
+                appendDecimalUnit(
+                        builder,
+                        context.getResources().getQuantityString(speedId, getQuantityCount(speedInUnit), speedInUnit),
+                        String.format(locale, "%.1f", speedInUnit),
+                        isMetricUnits ? "kilometer per hour" : "mile per hour"
+                );
+                builder.append(",");
+            }
 
-            if (currentDistancePerTime != null) {
+            if (shouldVoiceAnnounceLapSpeedPace() && currentDistancePerTime != null) {
                 double currentDistancePerTimeInUnit = currentDistancePerTime.to(isMetricUnits);
 
                 if (currentDistancePerTimeInUnit > 0) {
@@ -100,19 +109,21 @@ class VoiceAnnouncementUtils {
                 }
             }
         } else {
-            Duration time = distancePerTime.toPace(isMetricUnits);
-            builder.append(" ").append(context.getString(R.string.pace));
-            appendDuration(
-                    context,
-                    locale,
-                    builder,
-                    time
-            );
-            builder.append(" ").append(context.getString(perUnitStringId))
-                    .append(",");
+            if (shouldVoiceAnnounceAverageSpeedPace()) {
+                Duration time = distancePerTime.toPace(isMetricUnits);
+                builder.append(" ").append(context.getString(R.string.pace));
+                appendDuration(
+                        context,
+                        locale,
+                        builder,
+                        time
+                );
+                builder.append(" ").append(context.getString(perUnitStringId))
+                        .append(",");
+            }
 
-            Duration currentTime = currentDistancePerTime != null ? currentDistancePerTime.toPace(isMetricUnits) : Duration.ofMillis(0);
-            if (!currentTime.isZero()) {
+            if (shouldVoiceAnnounceLapSpeedPace() && currentDistancePerTime != null) {
+                Duration currentTime = currentDistancePerTime.toPace(isMetricUnits);
                 builder.append(" ").append(context.getString(R.string.lap_time));
                 appendDuration(
                         context,
@@ -125,30 +136,27 @@ class VoiceAnnouncementUtils {
             }
         }
 
-        if (shouldVoiceAnnounceHeartRate()) {
-            if (sensorStatistics != null && sensorStatistics.hasHeartRate()) {
-                int averageHeartRate = Math.round(sensorStatistics.getAvgHeartRate().getBPM());
+        if (shouldVoiceAnnounceAverageHeartRate() && sensorStatistics != null && sensorStatistics.hasHeartRate()) {
+            int averageHeartRate = Math.round(sensorStatistics.getAvgHeartRate().getBPM());
 
-                builder.append(" ").append(context.getString(R.string.average_heart_rate));
-                appendCardinal(
-                        builder,
-                        context.getString(R.string.sensor_state_heart_rate_value, averageHeartRate),
-                        averageHeartRate
-                );
-                builder.append(",");
-            }
+            builder.append(" ").append(context.getString(R.string.average_heart_rate));
+            appendCardinal(
+                    builder,
+                    context.getString(R.string.sensor_state_heart_rate_value, averageHeartRate),
+                    averageHeartRate
+            );
+            builder.append(",");
+        }
+        if (shouldVoiceAnnounceLapHeartRate() && currentInterval != null && currentInterval.hasAverageHeartRate()) {
+            int currentHeartRate = Math.round(currentInterval.getAverageHeartRate().getBPM());
 
-            if (currentInterval != null && currentInterval.hasAverageHeartRate()) {
-                int currentHeartRate = Math.round(currentInterval.getAverageHeartRate().getBPM());
-
-                builder.append(" ").append(context.getString(R.string.current_heart_rate));
-                appendCardinal(
-                        builder,
-                        context.getString(R.string.sensor_state_heart_rate_value, currentHeartRate),
-                        currentHeartRate
-                );
-                builder.append(",");
-            }
+            builder.append(" ").append(context.getString(R.string.current_heart_rate));
+            appendCardinal(
+                    builder,
+                    context.getString(R.string.sensor_state_heart_rate_value, currentHeartRate),
+                    currentHeartRate
+            );
+            builder.append(",");
         }
 
         return builder;
